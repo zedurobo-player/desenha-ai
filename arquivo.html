@@ -1,0 +1,1631 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Draw Paint</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #e9edf3;
+            color: #222;
+            overflow: hidden;
+        }
+
+        /* =========================
+   TOPO
+========================= */
+
+        .topbar {
+            height: 64px;
+            background: white;
+            border-bottom: 1px solid #c9c9c9;
+
+            display: flex;
+            align-items: center;
+
+            padding: 8px 14px;
+            gap: 8px;
+
+            box-shadow: 0 1px 5px rgba(0, 0, 0, .08);
+        }
+
+        .logo {
+            font-size: 21px;
+            font-weight: bold;
+            color: #2563eb;
+            margin-right: 12px;
+            white-space: nowrap;
+        }
+
+        .top-button {
+            border: 1px solid #bbb;
+            background: white;
+            padding: 9px 12px;
+            border-radius: 7px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .top-button:hover {
+            background: #eef5ff;
+            border-color: #7aa7e8;
+        }
+
+        .download {
+            background: #2563eb;
+            color: white;
+            border-color: #2563eb;
+            font-weight: bold;
+        }
+
+        .download:hover {
+            background: #174fc1;
+            color: white;
+        }
+
+        /* =========================
+   LAYOUT
+========================= */
+
+        .app {
+            display: flex;
+            height: calc(100vh - 64px);
+        }
+
+        /* =========================
+   MENU LATERAL
+========================= */
+
+        .sidebar {
+            width: 220px;
+            background: #f7f8fa;
+            border-right: 1px solid #c8c8c8;
+            padding: 12px;
+            overflow-y: auto;
+        }
+
+        .section {
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 12px;
+            font-weight: bold;
+            color: #666;
+            margin-bottom: 9px;
+        }
+
+        /* =========================
+   FERRAMENTAS
+========================= */
+
+        .tools {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+        }
+
+        .tool {
+            height: 55px;
+
+            border: 1px solid #ccc;
+            background: white;
+
+            border-radius: 7px;
+
+            cursor: pointer;
+            font-size: 11px;
+        }
+
+        .tool span {
+            display: block;
+            font-size: 20px;
+            margin-bottom: 2px;
+        }
+
+        .tool:hover {
+            background: #edf4ff;
+        }
+
+        .tool.active {
+            background: #cfe0ff;
+            border: 2px solid #2563eb;
+        }
+
+        /* =========================
+   CORES
+========================= */
+
+        .color-picker {
+            width: 100%;
+            height: 42px;
+            border: 0;
+            cursor: pointer;
+        }
+
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .color {
+            height: 28px;
+            border-radius: 5px;
+
+            border: 2px solid white;
+            outline: 1px solid #aaa;
+
+            cursor: pointer;
+        }
+
+        .color:hover {
+            transform: scale(1.08);
+        }
+
+        /* =========================
+   TAMANHO
+========================= */
+
+        #size {
+            width: 100%;
+        }
+
+        .size-text {
+            text-align: center;
+            font-size: 12px;
+            margin-top: 7px;
+        }
+
+        /* =========================
+   ÁREA DE DESENHO
+========================= */
+
+        .workspace {
+            flex: 1;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+            overflow: auto;
+
+            background-color: #ddd;
+
+            background-image:
+                linear-gradient(45deg, #ccc 25%, transparent 25%),
+                linear-gradient(-45deg, #ccc 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #ccc 75%),
+                linear-gradient(-45deg, transparent 75%, #ccc 75%);
+
+            background-size: 20px 20px;
+
+            background-position:
+                0 0,
+                0 10px,
+                10px -10px,
+                -10px 0;
+        }
+
+        .canvas-wrapper {
+            background: white;
+
+            box-shadow:
+                0 4px 20px rgba(0, 0, 0, .35);
+
+            position: relative;
+        }
+
+        canvas {
+            display: block;
+            background: white;
+            cursor: crosshair;
+        }
+
+        /* =========================
+   RODAPÉ
+========================= */
+
+        .statusbar {
+            position: fixed;
+
+            left: 220px;
+            right: 0;
+            bottom: 0;
+
+            height: 30px;
+
+            background: white;
+
+            border-top: 1px solid #bbb;
+
+            display: flex;
+            align-items: center;
+
+            padding: 0 12px;
+
+            font-size: 12px;
+            color: #555;
+        }
+
+        .zoom {
+            margin-left: auto;
+        }
+
+        /* =========================
+   MOBILE
+========================= */
+
+        @media(max-width: 700px) {
+
+            .sidebar {
+                width: 170px;
+            }
+
+            .statusbar {
+                left: 170px;
+            }
+
+            .logo {
+                display: none;
+            }
+
+            .top-button {
+                padding: 8px;
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- =========================
+     TOPO
+========================= -->
+
+    <header class="topbar">
+
+        <div class="logo">
+            🎨 Draw Paint
+        </div>
+
+        <button class="top-button" onclick="newDrawing()">
+            📄 Novo
+        </button>
+
+        <button class="top-button" onclick="openImage()">
+            📂 Abrir
+        </button>
+
+        <button class="top-button" onclick="undo()">
+            ↩️ Desfazer
+        </button>
+
+        <button class="top-button" onclick="redo()">
+            ↪️ Refazer
+        </button>
+
+        <!-- BOTÃO DE DOWNLOAD -->
+
+        <button class="top-button download" onclick="downloadDrawing()">
+            ⬇️ Baixar desenho
+        </button>
+
+        <input type="file" id="imageInput" accept="image/*" hidden>
+
+        <div class="zoom">
+            <button class="top-button" onclick="changeZoom(-0.1)">
+                −
+            </button>
+
+            <span id="zoomText">
+                100%
+            </span>
+
+            <button class="top-button" onclick="changeZoom(0.1)">
+                +
+            </button>
+        </div>
+
+    </header>
+
+    <!-- =========================
+     APLICATIVO
+========================= -->
+
+    <div class="app">
+
+        <!-- MENU -->
+
+        <aside class="sidebar">
+
+            <div class="section">
+
+                <div class="section-title">
+                    FERRAMENTAS
+                </div>
+
+                <div class="tools">
+
+                    <button class="tool active" data-tool="pencil">
+                        <span>✏️</span>
+                        Lápis
+                    </button>
+
+                    <button class="tool" data-tool="brush">
+                        <span>🖌️</span>
+                        Pincel
+                    </button>
+
+                    <button class="tool" data-tool="eraser">
+                        <span>🧽</span>
+                        Borracha
+                    </button>
+
+                    <button class="tool" data-tool="line">
+                        <span>╱</span>
+                        Linha
+                    </button>
+
+                    <button class="tool" data-tool="rectangle">
+                        <span>▭</span>
+                        Retângulo
+                    </button>
+
+                    <button class="tool" data-tool="circle">
+                        <span>⭕</span>
+                        Círculo
+                    </button>
+
+                    <button class="tool" data-tool="triangle">
+                        <span>△</span>
+                        Triângulo
+                    </button>
+
+                    <button class="tool" data-tool="fill">
+                        <span>🪣</span>
+                        Balde
+                    </button>
+
+                    <button class="tool" data-tool="eyedropper">
+                        <span>💧</span>
+                        Conta-gotas
+                    </button>
+
+                    <button class="tool" data-tool="text">
+                        <span>🔤</span>
+                        Texto
+                    </button>
+
+                </div>
+
+            </div>
+
+            <!-- CORES -->
+
+            <div class="section">
+
+                <div class="section-title">
+                    COR
+                </div>
+
+                <input type="color" id="colorPicker" class="color-picker" value="#000000">
+
+                <div class="color-grid">
+
+                    <div class="color" style="background:#000000" data-color="#000000"></div>
+
+                    <div class="color" style="background:#ffffff" data-color="#ffffff"></div>
+
+                    <div class="color" style="background:#ff0000" data-color="#ff0000"></div>
+
+                    <div class="color" style="background:#00aa00" data-color="#00aa00"></div>
+
+                    <div class="color" style="background:#0000ff" data-color="#0000ff"></div>
+
+                    <div class="color" style="background:#ffff00" data-color="#ffff00"></div>
+
+                    <div class="color" style="background:#ff8800" data-color="#ff8800"></div>
+
+                    <div class="color" style="background:#8000ff" data-color="#8000ff"></div>
+
+                    <div class="color" style="background:#00ffff" data-color="#00ffff"></div>
+
+                    <div class="color" style="background:#ff00ff" data-color="#ff00ff"></div>
+
+                    <div class="color" style="background:#8b4513" data-color="#8b4513"></div>
+
+                    <div class="color" style="background:#808080" data-color="#808080"></div>
+
+                    <div class="color" style="background:#ffc0cb" data-color="#ffc0cb"></div>
+
+                    <div class="color" style="background:#008080" data-color="#008080"></div>
+
+                    <div class="color" style="background:#ffd700" data-color="#ffd700"></div>
+
+                </div>
+
+            </div>
+
+            <!-- TAMANHO -->
+
+            <div class="section">
+
+                <div class="section-title">
+                    TAMANHO
+                </div>
+
+                <input type="range" id="size" min="1" max="80" value="5">
+
+                <div class="size-text">
+                    Tamanho:
+                    <b id="sizeText">5</b> px
+                </div>
+
+            </div>
+
+            <!-- AÇÕES -->
+
+            <div class="section">
+
+                <div class="section-title">
+                    AÇÕES
+                </div>
+
+                <button class="top-button" style="width:100%" onclick="clearDrawing()">
+                    🗑️ Limpar desenho
+                </button>
+
+                <br><br>
+
+                <button class="top-button" style="width:100%" onclick="whiteBackground()">
+                    ⬜ Fundo branco
+                </button>
+
+                <br><br>
+
+                <!-- OUTRO BOTÃO DE DOWNLOAD -->
+
+                <button class="top-button download" style="width:100%" onclick="downloadDrawing()">
+                    ⬇️ BAIXAR DESENHO
+                </button>
+
+            </div>
+
+        </aside>
+
+        <!-- ÁREA DO CANVAS -->
+
+        <main class="workspace">
+
+            <div class="canvas-wrapper">
+
+                <canvas id="canvas" width="1000" height="650"></canvas>
+
+            </div>
+
+        </main>
+
+    </div>
+
+    <!-- STATUS -->
+
+    <div class="statusbar">
+
+        <span id="status">
+            Ferramenta: Lápis
+        </span>
+
+        <span class="zoom">
+            1000 × 650 px
+        </span>
+
+    </div>
+
+    <script>
+
+        /* =========================
+           CANVAS
+        ========================= */
+
+        const canvas =
+            document.getElementById("canvas");
+
+        const ctx =
+            canvas.getContext("2d");
+
+        let currentTool = "pencil";
+
+        let currentColor = "#000000";
+
+        let brushSize = 5;
+
+        let drawing = false;
+
+        let startX = 0;
+        let startY = 0;
+
+        let zoom = 1;
+
+
+        /* =========================
+           HISTÓRICO
+        ========================= */
+
+        let history = [];
+
+        let historyIndex = -1;
+
+
+        /* =========================
+           FUNDO INICIAL
+        ========================= */
+
+        ctx.fillStyle = "white";
+
+        ctx.fillRect(
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        );
+
+        saveState();
+
+
+        /* =========================
+           SELEÇÃO DE FERRAMENTA
+        ========================= */
+
+        document
+            .querySelectorAll(".tool")
+            .forEach(button => {
+
+                button.addEventListener("click", () => {
+
+                    document
+                        .querySelectorAll(".tool")
+                        .forEach(b =>
+                            b.classList.remove("active")
+                        );
+
+                    button.classList.add("active");
+
+                    currentTool =
+                        button.dataset.tool;
+
+                    const names = {
+
+                        pencil: "Lápis",
+                        brush: "Pincel",
+                        eraser: "Borracha",
+                        line: "Linha",
+                        rectangle: "Retângulo",
+                        circle: "Círculo",
+                        triangle: "Triângulo",
+                        fill: "Balde",
+                        eyedropper: "Conta-gotas",
+                        text: "Texto"
+
+                    };
+
+                    document
+                        .getElementById("status")
+                        .textContent =
+                        "Ferramenta: " +
+                        names[currentTool];
+
+                });
+
+            });
+
+
+        /* =========================
+           COR
+        ========================= */
+
+        document
+            .getElementById("colorPicker")
+            .addEventListener("input", e => {
+
+                currentColor =
+                    e.target.value;
+
+            });
+
+
+        document
+            .querySelectorAll(".color")
+            .forEach(element => {
+
+                element.addEventListener("click", () => {
+
+                    currentColor =
+                        element.dataset.color;
+
+                    document
+                        .getElementById("colorPicker")
+                        .value =
+                        currentColor;
+
+                });
+
+            });
+
+
+        /* =========================
+           TAMANHO
+        ========================= */
+
+        document
+            .getElementById("size")
+            .addEventListener("input", e => {
+
+                brushSize =
+                    Number(e.target.value);
+
+                document
+                    .getElementById("sizeText")
+                    .textContent =
+                    brushSize;
+
+            });
+
+
+        /* =========================
+           POSIÇÃO DO MOUSE
+        ========================= */
+
+        function getMousePosition(event) {
+
+            const rect =
+                canvas.getBoundingClientRect();
+
+            return {
+
+                x:
+                    (event.clientX - rect.left)
+                    *
+                    (canvas.width / rect.width),
+
+                y:
+                    (event.clientY - rect.top)
+                    *
+                    (canvas.height / rect.height)
+
+            };
+
+        }
+
+
+        /* =========================
+           MOUSE DOWN
+        ========================= */
+
+        canvas.addEventListener(
+            "mousedown",
+            event => {
+
+                const position =
+                    getMousePosition(event);
+
+                startX =
+                    position.x;
+
+                startY =
+                    position.y;
+
+                drawing = true;
+
+
+                /* BALDE */
+
+                if (currentTool === "fill") {
+
+                    floodFill(
+                        Math.floor(startX),
+                        Math.floor(startY),
+                        currentColor
+                    );
+
+                    saveState();
+
+                    drawing = false;
+
+                    return;
+
+                }
+
+
+                /* CONTA-GOTAS */
+
+                if (currentTool === "eyedropper") {
+
+                    const pixel =
+                        ctx.getImageData(
+                            startX,
+                            startY,
+                            1,
+                            1
+                        ).data;
+
+                    currentColor =
+                        rgbToHex(
+                            pixel[0],
+                            pixel[1],
+                            pixel[2]
+                        );
+
+                    document
+                        .getElementById("colorPicker")
+                        .value =
+                        currentColor;
+
+                    drawing = false;
+
+                    return;
+
+                }
+
+
+                /* TEXTO */
+
+                if (currentTool === "text") {
+
+                    const text =
+                        prompt("Digite o texto:");
+
+                    if (text) {
+
+                        ctx.fillStyle =
+                            currentColor;
+
+                        ctx.font =
+                            `${Math.max(
+                                16,
+                                brushSize * 4
+                            )}px Arial`;
+
+                        ctx.fillText(
+                            text,
+                            startX,
+                            startY
+                        );
+
+                        saveState();
+
+                    }
+
+                    drawing = false;
+
+                    return;
+
+                }
+
+
+                ctx.beginPath();
+
+                ctx.moveTo(
+                    startX,
+                    startY
+                );
+
+            });
+
+
+        /* =========================
+           MOUSE MOVE
+        ========================= */
+
+        canvas.addEventListener(
+            "mousemove",
+            event => {
+
+                if (!drawing)
+                    return;
+
+                const position =
+                    getMousePosition(event);
+
+
+                if (
+                    currentTool === "pencil" ||
+                    currentTool === "brush" ||
+                    currentTool === "eraser"
+                ) {
+
+                    ctx.lineCap = "round";
+                    ctx.lineJoin = "round";
+
+
+                    if (
+                        currentTool === "pencil"
+                    ) {
+
+                        ctx.globalCompositeOperation =
+                            "source-over";
+
+                        ctx.strokeStyle =
+                            currentColor;
+
+                        ctx.lineWidth =
+                            brushSize;
+
+                    }
+
+
+                    if (
+                        currentTool === "brush"
+                    ) {
+
+                        ctx.globalCompositeOperation =
+                            "source-over";
+
+                        ctx.strokeStyle =
+                            currentColor;
+
+                        ctx.lineWidth =
+                            brushSize * 2;
+
+                    }
+
+
+                    if (
+                        currentTool === "eraser"
+                    ) {
+
+                        ctx.globalCompositeOperation =
+                            "destination-out";
+
+                        ctx.lineWidth =
+                            brushSize * 3;
+
+                    }
+
+
+                    ctx.lineTo(
+                        position.x,
+                        position.y
+                    );
+
+                    ctx.stroke();
+
+                    ctx.beginPath();
+
+                    ctx.moveTo(
+                        position.x,
+                        position.y
+                    );
+
+                }
+
+            });
+
+
+        /* =========================
+           MOUSE UP
+        ========================= */
+
+        canvas.addEventListener(
+            "mouseup",
+            event => {
+
+                if (!drawing)
+                    return;
+
+                const position =
+                    getMousePosition(event);
+
+
+                ctx.globalCompositeOperation =
+                    "source-over";
+
+
+                /* LINHA */
+
+                if (currentTool === "line") {
+
+                    ctx.strokeStyle =
+                        currentColor;
+
+                    ctx.lineWidth =
+                        brushSize;
+
+                    ctx.beginPath();
+
+                    ctx.moveTo(
+                        startX,
+                        startY
+                    );
+
+                    ctx.lineTo(
+                        position.x,
+                        position.y
+                    );
+
+                    ctx.stroke();
+
+                }
+
+
+                /* RETÂNGULO */
+
+                if (
+                    currentTool === "rectangle"
+                ) {
+
+                    ctx.strokeStyle =
+                        currentColor;
+
+                    ctx.lineWidth =
+                        brushSize;
+
+                    ctx.strokeRect(
+                        startX,
+                        startY,
+                        position.x - startX,
+                        position.y - startY
+                    );
+
+                }
+
+
+                /* CÍRCULO */
+
+                if (
+                    currentTool === "circle"
+                ) {
+
+                    const dx =
+                        position.x - startX;
+
+                    const dy =
+                        position.y - startY;
+
+                    const radius =
+                        Math.sqrt(
+                            dx * dx +
+                            dy * dy
+                        );
+
+                    ctx.strokeStyle =
+                        currentColor;
+
+                    ctx.lineWidth =
+                        brushSize;
+
+                    ctx.beginPath();
+
+                    ctx.arc(
+                        startX,
+                        startY,
+                        radius,
+                        0,
+                        Math.PI * 2
+                    );
+
+                    ctx.stroke();
+
+                }
+
+
+                /* TRIÂNGULO */
+
+                if (
+                    currentTool === "triangle"
+                ) {
+
+                    ctx.strokeStyle =
+                        currentColor;
+
+                    ctx.lineWidth =
+                        brushSize;
+
+                    ctx.beginPath();
+
+                    ctx.moveTo(
+                        startX +
+                        (position.x - startX) / 2,
+                        startY
+                    );
+
+                    ctx.lineTo(
+                        startX,
+                        position.y
+                    );
+
+                    ctx.lineTo(
+                        position.x,
+                        position.y
+                    );
+
+                    ctx.closePath();
+
+                    ctx.stroke();
+
+                }
+
+
+                if (
+                    currentTool === "pencil" ||
+                    currentTool === "brush" ||
+                    currentTool === "eraser" ||
+                    currentTool === "line" ||
+                    currentTool === "rectangle" ||
+                    currentTool === "circle" ||
+                    currentTool === "triangle"
+                ) {
+
+                    saveState();
+
+                }
+
+                drawing = false;
+
+            });
+
+
+        /* =========================
+           HISTÓRICO
+        ========================= */
+
+        function saveState() {
+
+            history =
+                history.slice(
+                    0,
+                    historyIndex + 1
+                );
+
+            history.push(
+                canvas.toDataURL()
+            );
+
+            historyIndex++;
+
+            if (history.length > 40) {
+
+                history.shift();
+
+                historyIndex--;
+
+            }
+
+        }
+
+
+        function restoreState(data) {
+
+            const image =
+                new Image();
+
+            image.onload = () => {
+
+                ctx.clearRect(
+                    0,
+                    0,
+                    canvas.width,
+                    canvas.height
+                );
+
+                ctx.drawImage(
+                    image,
+                    0,
+                    0
+                );
+
+            };
+
+            image.src = data;
+
+        }
+
+
+        function undo() {
+
+            if (historyIndex <= 0)
+                return;
+
+            historyIndex--;
+
+            restoreState(
+                history[historyIndex]
+            );
+
+        }
+
+
+        function redo() {
+
+            if (
+                historyIndex >=
+                history.length - 1
+            )
+                return;
+
+            historyIndex++;
+
+            restoreState(
+                history[historyIndex]
+            );
+
+        }
+
+
+        /* =========================
+           NOVO DESENHO
+        ========================= */
+
+        function newDrawing() {
+
+            const confirmNew =
+                confirm(
+                    "Criar um novo desenho?"
+                );
+
+            if (!confirmNew)
+                return;
+
+            ctx.clearRect(
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
+
+            ctx.fillStyle =
+                "white";
+
+            ctx.fillRect(
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
+
+            history = [];
+
+            historyIndex = -1;
+
+            saveState();
+
+        }
+
+
+        /* =========================
+           LIMPAR
+        ========================= */
+
+        function clearDrawing() {
+
+            ctx.clearRect(
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
+
+            saveState();
+
+        }
+
+
+        /* =========================
+           FUNDO BRANCO
+        ========================= */
+
+        function whiteBackground() {
+
+            ctx.globalCompositeOperation =
+                "source-over";
+
+            ctx.fillStyle =
+                "white";
+
+            ctx.fillRect(
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
+
+            saveState();
+
+        }
+
+
+        /* =========================
+           ⭐ DOWNLOAD DO DESENHO ⭐
+        ========================= */
+
+        function downloadDrawing() {
+
+            /*
+               Cria uma imagem PNG
+               usando o conteúdo do canvas.
+            */
+
+            const image =
+                canvas.toDataURL(
+                    "image/png"
+                );
+
+            /*
+               Cria um link invisível
+            */
+
+            const link =
+                document.createElement("a");
+
+            /*
+               Nome do arquivo
+            */
+
+            link.download =
+                "meu-desenho.png";
+
+            /*
+               Coloca a imagem no link
+            */
+
+            link.href =
+                image;
+
+            /*
+               Faz o navegador baixar
+            */
+
+            document.body.appendChild(link);
+
+            link.click();
+
+            document.body.removeChild(link);
+
+        }
+
+
+        /* =========================
+           ABRIR IMAGEM
+        ========================= */
+
+        function openImage() {
+
+            document
+                .getElementById("imageInput")
+                .click();
+
+        }
+
+
+        document
+            .getElementById("imageInput")
+            .addEventListener(
+                "change",
+                event => {
+
+                    const file =
+                        event.target.files[0];
+
+                    if (!file)
+                        return;
+
+                    const reader =
+                        new FileReader();
+
+                    reader.onload =
+                        function (e) {
+
+                            const image =
+                                new Image();
+
+                            image.onload =
+                                function () {
+
+                                    ctx.clearRect(
+                                        0,
+                                        0,
+                                        canvas.width,
+                                        canvas.height
+                                    );
+
+                                    ctx.drawImage(
+                                        image,
+                                        0,
+                                        0,
+                                        canvas.width,
+                                        canvas.height
+                                    );
+
+                                    saveState();
+
+                                };
+
+                            image.src =
+                                e.target.result;
+
+                        };
+
+                    reader.readAsDataURL(file);
+
+                });
+
+
+        /* =========================
+           ZOOM
+        ========================= */
+
+        function changeZoom(amount) {
+
+            zoom += amount;
+
+            if (zoom < 0.3)
+                zoom = 0.3;
+
+            if (zoom > 3)
+                zoom = 3;
+
+            canvas.style.width =
+                canvas.width * zoom + "px";
+
+            canvas.style.height =
+                canvas.height * zoom + "px";
+
+            document
+                .getElementById("zoomText")
+                .textContent =
+                Math.round(zoom * 100) + "%";
+
+        }
+
+
+        /* =========================
+           BALDE DE TINTA
+        ========================= */
+
+        function floodFill(
+            startX,
+            startY,
+            fillColor
+        ) {
+
+            const imageData =
+                ctx.getImageData(
+                    0,
+                    0,
+                    canvas.width,
+                    canvas.height
+                );
+
+            const pixels =
+                imageData.data;
+
+            const startIndex =
+                (
+                    startY *
+                    canvas.width +
+                    startX
+                ) * 4;
+
+            const targetColor = [
+
+                pixels[startIndex],
+                pixels[startIndex + 1],
+                pixels[startIndex + 2],
+                pixels[startIndex + 3]
+
+            ];
+
+            const newColor =
+                hexToRGBA(fillColor);
+
+
+            if (
+                targetColor[0] === newColor[0] &&
+                targetColor[1] === newColor[1] &&
+                targetColor[2] === newColor[2]
+            ) {
+
+                return;
+
+            }
+
+
+            const stack = [
+                [startX, startY]
+            ];
+
+
+            while (stack.length > 0) {
+
+                const [x, y] =
+                    stack.pop();
+
+                if (
+                    x < 0 ||
+                    y < 0 ||
+                    x >= canvas.width ||
+                    y >= canvas.height
+                ) {
+
+                    continue;
+
+                }
+
+
+                const index =
+                    (
+                        y *
+                        canvas.width +
+                        x
+                    ) * 4;
+
+
+                if (
+                    pixels[index] === targetColor[0] &&
+                    pixels[index + 1] === targetColor[1] &&
+                    pixels[index + 2] === targetColor[2] &&
+                    pixels[index + 3] === targetColor[3]
+                ) {
+
+                    pixels[index] =
+                        newColor[0];
+
+                    pixels[index + 1] =
+                        newColor[1];
+
+                    pixels[index + 2] =
+                        newColor[2];
+
+                    pixels[index + 3] =
+                        newColor[3];
+
+
+                    stack.push([
+                        x + 1,
+                        y
+                    ]);
+
+                    stack.push([
+                        x - 1,
+                        y
+                    ]);
+
+                    stack.push([
+                        x,
+                        y + 1
+                    ]);
+
+                    stack.push([
+                        x,
+                        y - 1
+                    ]);
+
+                }
+
+            }
+
+
+            ctx.putImageData(
+                imageData,
+                0,
+                0
+            );
+
+        }
+
+
+        /* =========================
+           CONVERTER HEX → RGBA
+        ========================= */
+
+        function hexToRGBA(hex) {
+
+            hex =
+                hex.replace(
+                    "#",
+                    ""
+                );
+
+            return [
+
+                parseInt(
+                    hex.substring(0, 2),
+                    16
+                ),
+
+                parseInt(
+                    hex.substring(2, 4),
+                    16
+                ),
+
+                parseInt(
+                    hex.substring(4, 6),
+                    16
+                ),
+
+                255
+
+            ];
+
+        }
+
+
+        /* =========================
+           RGB → HEX
+        ========================= */
+
+        function rgbToHex(r, g, b) {
+
+            return "#" +
+                [r, g, b]
+                    .map(value =>
+                        value
+                            .toString(16)
+                            .padStart(2, "0")
+                    )
+                    .join("");
+
+        }
+
+
+        /* =========================
+           ATALHOS
+        ========================= */
+
+        document.addEventListener(
+            "keydown",
+            event => {
+
+                if (
+                    event.ctrlKey &&
+                    event.key.toLowerCase() === "z"
+                ) {
+
+                    event.preventDefault();
+
+                    undo();
+
+                }
+
+
+                if (
+                    event.ctrlKey &&
+                    event.key.toLowerCase() === "y"
+                ) {
+
+                    event.preventDefault();
+
+                    redo();
+
+                }
+
+
+                if (
+                    event.ctrlKey &&
+                    event.key.toLowerCase() === "s"
+                ) {
+
+                    event.preventDefault();
+
+                    downloadDrawing();
+
+                }
+
+            });
+
+    </script>
+
+</body>
+
+</html>
